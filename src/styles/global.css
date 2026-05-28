@@ -332,7 +332,7 @@ button:disabled {
   height: 48px;
   z-index: 90;
   -webkit-app-region: drag;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 /* Custom window controls — macOS traffic light style */

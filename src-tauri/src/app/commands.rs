@@ -320,13 +320,15 @@ pub fn update_nexus_api_key(
         settings.nexus_is_premium = false;
         settings.nexus_user_name = None;
     } else {
-        // Validate API key and fetch user info
-        let discover = DiscoverService::new(settings.clone());
-        let user = discover.validate_user(&trimmed)?;
+        settings.nexus_api_key = Some(trimmed.clone());
+        settings.nexus_is_premium = false;
+        settings.nexus_user_name = None;
 
-        settings.nexus_api_key = Some(trimmed);
-        settings.nexus_is_premium = user.is_premium.unwrap_or(false);
-        settings.nexus_user_name = user.name;
+        let discover = DiscoverService::new(settings.clone());
+        if let Ok(user) = discover.validate_user(&trimmed) {
+            settings.nexus_is_premium = user.is_premium.unwrap_or(false);
+            settings.nexus_user_name = user.name;
+        }
     }
 
     settings_repo::save_settings(&settings)?;

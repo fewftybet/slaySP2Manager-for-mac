@@ -140,7 +140,7 @@ export function SettingsPage() {
       const text = await navigator.clipboard.readText();
       if (text) {
         setApiKey(text);
-        void handleSaveApiKey(text);
+        apiKeyInputRef.current?.focus();
       }
     } catch (err) {
       console.error("Failed to read clipboard:", err);

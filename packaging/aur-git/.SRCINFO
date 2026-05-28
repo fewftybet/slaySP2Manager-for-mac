@@ -2,7 +2,7 @@ pkgbase = slaysp2manager-git
 	pkgdesc = Desktop mod manager for Slay the Spire 2
 	pkgver = 0.9.0.r0.g09db51a
 	pkgrel = 1
-	url = https://github.com/wakaka6/SlaySP2Manger
+	url = https://github.com/konuhd/slaySP2Manager-for-arch
 	arch = x86_64
 	license = MIT
 	makedepends = cargo
@@ -21,7 +21,7 @@ pkgbase = slaysp2manager-git
 	provides = slaysp2manager
 	conflicts = slaysp2manager
 	options = !lto
-	source = git+https://github.com/wakaka6/SlaySP2Manger.git
+	source = git+https://github.com/konuhd/slaySP2Manager-for-arch.git
 	sha256sums = SKIP
 
 pkgname = slaysp2manager-git

@@ -4,7 +4,7 @@ pkgver=0.9.0.r0.g09db51a
 pkgrel=1
 pkgdesc='Desktop mod manager for Slay the Spire 2'
 arch=('x86_64')
-url='https://github.com/wakaka6/SlaySP2Manger'
+url='https://github.com/konuhd/slaySP2Manager-for-arch'
 license=('MIT')
 depends=(
   'webkit2gtk-4.1'
@@ -25,12 +25,12 @@ makedepends=(
 )
 provides=("${_pkgname}")
 conflicts=("${_pkgname}")
-source=('git+https://github.com/wakaka6/SlaySP2Manger.git')
+source=('git+https://github.com/konuhd/slaySP2Manager-for-arch.git')
 sha256sums=('SKIP')
 options=('!lto')
 
 pkgver() {
-  cd 'SlaySP2Manger'
+  cd 'slaySP2Manager-for-arch'
 
   local tag commits hash
   tag=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
@@ -40,21 +40,21 @@ pkgver() {
 }
 
 prepare() {
-  cd 'SlaySP2Manger'
+  cd 'slaySP2Manager-for-arch'
 
   cargo fetch --locked --manifest-path src-tauri/Cargo.toml
   npm ci
 }
 
 build() {
-  cd 'SlaySP2Manger'
+  cd 'slaySP2Manager-for-arch'
 
   npm run build
   env -u RUSTFLAGS -u CARGO_ENCODED_RUSTFLAGS -u CFLAGS -u CXXFLAGS -u LDFLAGS npm run tauri:build -- --no-bundle
 }
 
 package() {
-  cd 'SlaySP2Manger'
+  cd 'slaySP2Manager-for-arch'
 
   install -Dm755 src-tauri/target/release/slaysp2manager "${pkgdir}/usr/bin/slaysp2manager"
   install -Dm644 src-tauri/icons/icon-256.png "${pkgdir}/usr/share/pixmaps/slaysp2manager.png"
