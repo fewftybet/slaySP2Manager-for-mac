@@ -434,11 +434,12 @@ struct PckArchive {
 
 impl PckArchive {
     fn open(path: &Path) -> Result<Self, String> {
-        let mut file = File::open(path).map_err(|error| error.to_string())?;
+        let mut file = File::open(path)
+            .map_err(|error| format!("failed to open PCK {}: {error}", path.display()))?;
 
         let mut magic = [0_u8; 4];
         file.read_exact(&mut magic)
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| format!("failed to read PCK magic from {}: {error}", path.display()))?;
         if &magic != b"GDPC" {
             return Err("unexpected PCK magic".to_string());
         }
@@ -520,9 +521,10 @@ impl CompendiumService {
             .detect_install()
             .map_err(|error| error.to_string())?;
 
+        let release_path = Path::new(&install.root_dir).join("release_info.json");
         let release: ReleaseInfo = serde_json::from_str(
-            &fs::read_to_string(Path::new(&install.root_dir).join("release_info.json"))
-                .map_err(|error| error.to_string())?,
+            &fs::read_to_string(&release_path)
+                .map_err(|error| format!("failed to read {}: {error}", release_path.display()))?,
         )
         .map_err(|error| error.to_string())?;
 
@@ -552,7 +554,8 @@ impl CompendiumService {
             "zhs"
         };
 
-        let archive = PckArchive::open(&Path::new(&install.root_dir).join("SlayTheSpire2.pck"))?;
+        let pck_path = Path::new(&install.root_dir).join("SlayTheSpire2.pck");
+        let archive = PckArchive::open(&pck_path)?;
         let cards_text: HashMap<String, String> = serde_json::from_slice(
             &archive.read_bytes(&format!("localization/{}/cards.json", locale_dir))?,
         )
@@ -657,8 +660,9 @@ fn ensure_snapshot(
 }
 
 fn load_snapshot_from_path(path: &Path) -> Result<CompendiumSnapshot, String> {
-    serde_json::from_str(&fs::read_to_string(path).map_err(|error| error.to_string())?)
-        .map_err(|error| error.to_string())
+    let text = fs::read_to_string(path)
+        .map_err(|error| format!("failed to read snapshot {}: {error}", path.display()))?;
+    serde_json::from_str(&text).map_err(|error| error.to_string())
 }
 
 fn snapshot_matches_release(snapshot: &CompendiumSnapshot, release: &ReleaseInfo) -> bool {

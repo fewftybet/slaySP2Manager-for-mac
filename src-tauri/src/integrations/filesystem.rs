@@ -1,8 +1,20 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+pub fn game_executable_path(path: &Path) -> Option<PathBuf> {
+    [
+        "SlayTheSpire2",
+        "Slay the Spire 2",
+        "SlayTheSpire2.exe",
+        "Slay the Spire 2.exe",
+    ]
+    .into_iter()
+    .map(|name| path.join(name))
+    .find(|candidate| candidate.is_file())
+}
 
 pub fn contains_game_executable(path: &Path) -> bool {
-    path.join("SlayTheSpire2.exe").is_file()
+    game_executable_path(path).is_some()
 }
 
 pub fn list_directories(path: &Path) -> Vec<std::path::PathBuf> {

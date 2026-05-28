@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -26,8 +25,5 @@ pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
 }
 
 fn settings_file_path() -> Result<PathBuf, String> {
-    let app_data = env::var("APPDATA").map_err(|_| "APPDATA not available".to_string())?;
-    Ok(PathBuf::from(app_data)
-        .join("SlaySP2Manager")
-        .join("settings.json"))
+    Ok(crate::integrations::platform_paths::manager_data_root()?.join("settings.json"))
 }

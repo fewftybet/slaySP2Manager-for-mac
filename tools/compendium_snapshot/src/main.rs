@@ -32,8 +32,7 @@ pub fn write_snapshot_for_game_root(game_root: &Path, output_path: &Path) -> Res
 }
 
 pub fn inspect_card_class(game_root: &Path, class_name: &str) -> Result<(), String> {
-    let parser =
-        CardAssemblyParser::new(&game_root.join("data_sts2_windows_x86_64").join("sts2.dll"))?;
+    let parser = CardAssemblyParser::new(&find_sts2_assembly(game_root)?)?;
     parser.inspect_class(class_name)
 }
 
@@ -61,8 +60,7 @@ fn run() -> AppResult<()> {
 fn build_snapshot(game_root: &Path) -> AppResult<SnapshotFile> {
     let release_info = read_release_info(game_root)?;
     let pck = PckArchive::open(&game_root.join("SlayTheSpire2.pck"))?;
-    let parser =
-        CardAssemblyParser::new(&game_root.join("data_sts2_windows_x86_64").join("sts2.dll"))?;
+    let parser = CardAssemblyParser::new(&find_sts2_assembly(game_root)?)?;
     let portrait_index = build_portrait_index(&pck)?;
 
     let mut cards = Vec::new();
@@ -128,6 +126,45 @@ fn write_snapshot_to_path(snapshot: &SnapshotFile, output_path: &Path) -> AppRes
     }
     let json = serde_json::to_string_pretty(snapshot).map_err(|error| error.to_string())?;
     fs::write(output_path, format!("{json}\n")).map_err(|error| error.to_string())
+}
+
+fn find_sts2_assembly(game_root: &Path) -> AppResult<PathBuf> {
+    for directory_name in ["data_sts2_linux_x86_64", "data_sts2_linuxbsd_x86_64", "data_sts2_windows_x86_64"] {
+        let candidate = game_root.join(directory_name).join("sts2.dll");
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+    }
+
+    let entries = fs::read_dir(game_root).map_err(|error| {
+        format!(
+            "failed to scan game root for sts2.dll at {}: {error}",
+            game_root.display()
+        )
+    })?;
+
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+
+        if name.starts_with("data_sts2_") {
+            let candidate = path.join("sts2.dll");
+            if candidate.is_file() {
+                return Ok(candidate);
+            }
+        }
+    }
+
+    Err(format!(
+        "failed to locate sts2.dll under game root {}",
+        game_root.display()
+    ))
 }
 
 #[derive(Debug, Clone)]

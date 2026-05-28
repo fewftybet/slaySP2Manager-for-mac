@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
@@ -524,7 +523,7 @@ impl SaveService {
             .ok_or_else(|| "error.cloudSaveNotFound".to_string())?;
         let cloud_dir = cloud_app_dir.join("remote");
 
-        // The correct mapping is APPDATA/SlayTheSpire2/steam/<SteamID64>/ -> Steam/userdata/<Account_ID>/2868840/remote/
+        // local: <SlayTheSpire2 save root>/<SteamID64>/ -> cloud: <Steam root>/userdata/<AccountID>/2868840/remote/
         let local_root = save_root()?.join(steam_id_64.to_string());
 
         if ascend && !local_root.exists() {
@@ -752,24 +751,15 @@ struct FileSnapshot {
 }
 
 fn save_root() -> Result<PathBuf, String> {
-    let app_data = env::var("APPDATA").map_err(|_| "APPDATA not available".to_string())?;
-    Ok(PathBuf::from(app_data).join("SlayTheSpire2").join("steam"))
+    crate::integrations::platform_paths::slay_spire_2_save_root()
 }
 
 fn backups_root() -> Result<PathBuf, String> {
-    let app_data = env::var("APPDATA").map_err(|_| "APPDATA not available".to_string())?;
-    Ok(PathBuf::from(app_data)
-        .join("SlaySP2Manager")
-        .join("backups")
-        .join("saves"))
+    crate::integrations::platform_paths::manager_save_backups_root()
 }
 
 fn cloud_backups_root() -> Result<PathBuf, String> {
-    let app_data = env::var("APPDATA").map_err(|_| "APPDATA not available".to_string())?;
-    Ok(PathBuf::from(app_data)
-        .join("SlaySP2Manager")
-        .join("backups")
-        .join("cloud_cache"))
+    crate::integrations::platform_paths::manager_cloud_backups_root()
 }
 
 fn steam_id64_from_account_id(account_id: u32) -> u64 {
@@ -1443,11 +1433,11 @@ fn backup_cloud_app_dir(source: &Path, account_id: u32, reason: &str) -> Result<
 }
 
 fn ensure_cloud_sync_processes_are_safe(allow_steam_running: bool) -> Result<(), String> {
-    if is_process_running("SlayTheSpire2.exe") {
+    if is_process_running("SlayTheSpire2") || is_process_running("Slay the Spire 2") {
         return Err("error.closeGameBeforeCloudSync".to_string());
     }
 
-    if !allow_steam_running && is_process_running("Steam.exe") {
+    if !allow_steam_running && is_process_running("steam") {
         return Err("error.steamRunningBeforeCloudSync".to_string());
     }
 
@@ -1455,7 +1445,7 @@ fn ensure_cloud_sync_processes_are_safe(allow_steam_running: bool) -> Result<(),
 }
 
 fn ensure_local_save_mutation_is_safe() -> Result<(), String> {
-    if is_process_running("SlayTheSpire2.exe") {
+    if is_process_running("SlayTheSpire2") || is_process_running("Slay the Spire 2") {
         return Err("error.closeGameBeforeCloudSync".to_string());
     }
 
@@ -1499,33 +1489,12 @@ mod tests {
     }
 }
 
-#[cfg(target_os = "windows")]
-fn is_process_running(image_name: &str) -> bool {
-    let output = Command::new("tasklist")
-        .args([
-            "/FI",
-            &format!("IMAGENAME eq {image_name}"),
-            "/FO",
-            "CSV",
-            "/NH",
-        ])
-        .output();
-
-    let Ok(output) = output else {
-        return false;
-    };
-
-    if !output.status.success() {
-        return false;
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
-    stdout.contains(&image_name.to_ascii_lowercase())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn is_process_running(_image_name: &str) -> bool {
-    false
+fn is_process_running(process_name: &str) -> bool {
+    Command::new("pgrep")
+        .args(["-x", process_name])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }
 
 fn parse_backup_folder_name(folder_name: &str, path: &Path) -> Option<SaveBackupEntry> {

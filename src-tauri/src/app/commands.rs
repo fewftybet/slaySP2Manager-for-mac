@@ -1426,29 +1426,10 @@ fn sanitize_profile_filename(name: &str) -> String {
 
 #[tauri::command]
 pub fn launch_game() -> Result<(), String> {
-    let steam_url = "steam://rungameid/2868840";
-
-    #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", steam_url])
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(steam_url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(steam_url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
+    std::process::Command::new("xdg-open")
+        .arg("steam://rungameid/2868840")
+        .spawn()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -1466,27 +1447,10 @@ pub fn open_mods_directory(state: State<'_, AppState>) -> Result<(), String> {
 
     let path = std::path::Path::new(&detected_game.mods_dir);
     if path.exists() {
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("explorer")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            std::process::Command::new("open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "linux")]
-        {
-            std::process::Command::new("xdg-open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
+        std::process::Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
     } else {
         return Err("Mods directory does not exist".to_string());
     }
@@ -1514,27 +1478,10 @@ pub fn open_mod_folder(mod_id: String, state: State<'_, AppState>) -> Result<(),
 
     let path = std::path::Path::new(&found.install_dir);
     if path.exists() {
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("explorer")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            std::process::Command::new("open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "linux")]
-        {
-            std::process::Command::new("xdg-open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
+        std::process::Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
     } else {
         return Err("Mod directory does not exist".to_string());
     }
@@ -1546,29 +1493,10 @@ pub fn open_mod_folder(mod_id: String, state: State<'_, AppState>) -> Result<(),
 pub fn open_path_in_explorer(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
     if p.exists() {
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("explorer")
-                .arg("/select,")
-                .arg(p.as_os_str())
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            std::process::Command::new("open")
-                .arg("-R")
-                .arg(p.as_os_str())
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(target_os = "linux")]
-        {
-            std::process::Command::new("xdg-open")
-                .arg(p.parent().unwrap_or(p))
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
+        std::process::Command::new("xdg-open")
+            .arg(p.parent().unwrap_or(p))
+            .spawn()
+            .map_err(|e| e.to_string())?;
     } else {
         return Err("Path does not exist".to_string());
     }
@@ -1577,27 +1505,11 @@ pub fn open_path_in_explorer(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn open_url_in_browser(url: String) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("cmd")
-            .args(["/c", "start", "", &url])
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
+    std::process::Command::new("xdg-open")
+        .arg(&url)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 

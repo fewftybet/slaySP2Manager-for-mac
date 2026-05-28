@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::app::state::AppSettings;
 use crate::domain::game::{GameDetectSource, GameInstall};
-use crate::integrations::filesystem::contains_game_executable;
+use crate::integrations::filesystem::{contains_game_executable, game_executable_path};
 use crate::integrations::steam::find_game_install;
 use crate::utils::error::AppError;
 
@@ -35,7 +35,10 @@ impl GameService {
         let disabled_name = self.settings.disabled_mods_dir_name.as_str();
         GameInstall {
             root_dir: root.to_string_lossy().to_string(),
-            exe_path: root.join("SlayTheSpire2.exe").to_string_lossy().to_string(),
+            exe_path: game_executable_path(&root)
+                .unwrap_or_else(|| root.join("SlayTheSpire2"))
+                .to_string_lossy()
+                .to_string(),
             mods_dir: root.join("mods").to_string_lossy().to_string(),
             disabled_mods_dir: root.join(disabled_name).to_string_lossy().to_string(),
             detected_by,

@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -8,16 +7,8 @@ use crate::integrations::filesystem::contains_game_executable;
 const GAME_FOLDER_NAME: &str = "Slay the Spire 2";
 const STEAM_APP_ID: &str = "2868840";
 
-/// Find the game installation by checking multiple sources in priority order:
-/// 1. Steam registry → libraryfolders.vdf → all Steam libraries
-/// 2. Common Steam default paths
-/// 3. Common non-Steam install locations
-///
-/// Every candidate is validated with `contains_game_executable` (checks for SlayTheSpire2.exe).
 pub fn find_game_install() -> Option<(PathBuf, GameDetectSource)> {
-    // 1. Try Steam registry + library folders (most reliable)
-    if let Some(steam_root) = read_steam_root_from_registry() {
-        // Check the default steamapps/common directly
+    if let Some(steam_root) = read_steam_root() {
         let default_game = steam_root
             .join("steamapps")
             .join("common")
@@ -26,7 +17,6 @@ pub fn find_game_install() -> Option<(PathBuf, GameDetectSource)> {
             return Some((default_game, GameDetectSource::SteamDefault));
         }
 
-        // Parse libraryfolders.vdf for additional Steam library paths
         let vdf_path = steam_root.join("steamapps").join("libraryfolders.vdf");
         if let Some(libraries) = parse_library_folders(&vdf_path) {
             for lib_path in libraries {
@@ -41,7 +31,6 @@ pub fn find_game_install() -> Option<(PathBuf, GameDetectSource)> {
         }
     }
 
-    // 2. Fallback: brute-force common paths
     for (candidate, source) in common_candidates() {
         if contains_game_executable(&candidate) {
             return Some((candidate, source));
@@ -51,66 +40,30 @@ pub fn find_game_install() -> Option<(PathBuf, GameDetectSource)> {
     None
 }
 
-/// Read Steam's installation path from the Windows registry.
-fn read_steam_root_from_registry() -> Option<PathBuf> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-
-    // Try 32-bit registry view (Steam is commonly installed as x86)
-    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    if let Ok(key) = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam") {
-        if let Ok(path) = key.get_value::<String, _>("InstallPath") {
-            let p = PathBuf::from(&path);
-            if p.exists() {
-                return Some(p);
-            }
-        }
-    }
-
-    // Try native registry view
-    if let Ok(key) = hklm.open_subkey("SOFTWARE\\Valve\\Steam") {
-        if let Ok(path) = key.get_value::<String, _>("InstallPath") {
-            let p = PathBuf::from(&path);
-            if p.exists() {
-                return Some(p);
-            }
-        }
-    }
-
-    // Try current user
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    if let Ok(key) = hkcu.open_subkey("Software\\Valve\\Steam") {
-        if let Ok(path) = key.get_value::<String, _>("SteamPath") {
-            let p = PathBuf::from(&path);
-            if p.exists() {
-                return Some(p);
-            }
-        }
-    }
-
-    None
+fn read_steam_root() -> Option<PathBuf> {
+    read_steam_roots().into_iter().next()
 }
 
-/// Parse Steam's `libraryfolders.vdf` to extract all library paths.
-///
-/// The VDF format looks like:
-/// ```text
-/// "libraryfolders"
-/// {
-///   "0"
-///   {
-///     "path"   "C:\\Program Files (x86)\\Steam"
-///     "apps"   { "2868840" "..." }
-///   }
-///   "1"
-///   {
-///     "path"   "D:\\SteamLibrary"
-///   }
-/// }
-/// ```
-///
-/// We extract all `"path"` values. If a block's `"apps"` section contains
-/// our app ID, we prioritize it by putting it first.
+fn read_steam_roots() -> Vec<PathBuf> {
+    steam_root_candidates()
+        .into_iter()
+        .filter(|path| path.exists())
+        .collect()
+}
+
+fn steam_root_candidates() -> Vec<PathBuf> {
+    let Some(home) = dirs_next::home_dir() else {
+        return Vec::new();
+    };
+
+    vec![
+        home.join(".steam/steam"),
+        home.join(".local/share/Steam"),
+        home.join(".var/app/com.valvesoftware.Steam/.steam/steam"),
+        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+    ]
+}
+
 fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let content = fs::read_to_string(vdf_path).ok()?;
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -122,7 +75,6 @@ fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
     for line in content.lines() {
         let trimmed = line.trim();
 
-        // Match "path" "VALUE"
         if trimmed.starts_with("\"path\"") {
             if let Some(value) = extract_vdf_value(trimmed) {
                 current_path = Some(value);
@@ -130,12 +82,10 @@ fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
             }
         }
 
-        // Check if this library contains our game
         if trimmed.contains(&format!("\"{}\"", STEAM_APP_ID)) {
             has_our_app = true;
         }
 
-        // When we hit a closing brace, commit the path
         if trimmed == "}" {
             if let Some(ref path) = current_path {
                 let pb = PathBuf::from(path);
@@ -152,7 +102,6 @@ fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
         }
     }
 
-    // Prioritized paths (containing our app ID) go first
     prioritized.extend(paths);
     if prioritized.is_empty() {
         None
@@ -161,113 +110,63 @@ fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
     }
 }
 
-/// Extract the value from a VDF key-value line like `"path"  "C:\\SteamLibrary"`.
 fn extract_vdf_value(line: &str) -> Option<String> {
-    let parts: Vec<&str> = line.splitn(2, '"').collect::<Vec<_>>();
-    // Split by all quotes: ["", "path", "  ", "value", ""]
     let all_quotes: Vec<&str> = line.split('"').collect();
     if all_quotes.len() >= 4 {
-        // The value is at index 3 (0=empty, 1=key, 2=separator, 3=value)
         let value = all_quotes[3].replace("\\\\", "\\");
         if !value.is_empty() {
             return Some(value);
         }
     }
-    let _ = parts; // suppress unused
     None
 }
 
-/// Hardcoded fallback candidates for when registry lookup fails.
 fn common_candidates() -> Vec<(PathBuf, GameDetectSource)> {
     let mut result = Vec::new();
+    let Some(home) = dirs_next::home_dir() else {
+        return result;
+    };
 
-    // Default Steam paths via environment variables
-    for env_key in ["ProgramFiles(x86)", "ProgramFiles"] {
-        if let Ok(base) = env::var(env_key) {
-            result.push((
-                PathBuf::from(&base)
-                    .join("Steam")
-                    .join("steamapps")
-                    .join("common")
-                    .join(GAME_FOLDER_NAME),
-                GameDetectSource::SteamDefault,
-            ));
-        }
-    }
-
-    // Scan drives C-H for common Steam library and game locations
-    for drive in ['C', 'D', 'E', 'F', 'G', 'H'] {
-        let d = format!("{}:", drive);
-
-        // SteamLibrary on drive root
-        result.push((
-            PathBuf::from(format!(
-                "{d}\\SteamLibrary\\steamapps\\common\\{GAME_FOLDER_NAME}"
-            )),
-            GameDetectSource::SteamLibrary,
-        ));
-
-        // Games/SteamLibrary
-        result.push((
-            PathBuf::from(format!(
-                "{d}\\Games\\SteamLibrary\\steamapps\\common\\{GAME_FOLDER_NAME}"
-            )),
-            GameDetectSource::SteamLibrary,
-        ));
-
-        // Steam directly on drive
-        result.push((
-            PathBuf::from(format!("{d}\\Steam\\steamapps\\common\\{GAME_FOLDER_NAME}")),
-            GameDetectSource::SteamDefault,
-        ));
-
-        // Direct game folder (non-Steam installs)
-        result.push((
-            PathBuf::from(format!("{d}\\Games\\{GAME_FOLDER_NAME}")),
-            GameDetectSource::CommonPath,
-        ));
-        result.push((
-            PathBuf::from(format!("{d}\\{GAME_FOLDER_NAME}")),
-            GameDetectSource::CommonPath,
-        ));
+    for base in [
+        home.join(".steam/steam/steamapps/common"),
+        home.join(".local/share/Steam/steamapps/common"),
+        home.join(".var/app/com.valvesoftware.Steam/.steam/steam/steamapps/common"),
+        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common"),
+        home.join("Games"),
+    ] {
+        result.push((base.join(GAME_FOLDER_NAME), GameDetectSource::SteamDefault));
     }
 
     result
 }
 
-/// Get the current Steam Account ID for cloud save paths.
 pub fn get_current_steam_account_id() -> Option<u32> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    if let Ok(key) = hkcu.open_subkey("Software\\Valve\\Steam\\ActiveProcess") {
-        if let Ok(active_user) = key.get_value::<u32, _>("ActiveUser") {
-            if active_user > 0 {
-                return Some(active_user);
-            }
-        }
-    }
-
-    // Fallback: parse loginusers.vdf
-    if let Some(steam_root) = read_steam_root_from_registry() {
-        let vdf_path = steam_root.join("config").join("loginusers.vdf");
-        if let Some(account_id) = parse_loginusers_for_account_id(&vdf_path) {
-            return Some(account_id);
-        }
-    }
-
-    None
+    find_active_cloud_app_dir()
+        .map(|(account_id, _)| account_id)
+        .or_else(|| {
+            read_steam_roots().into_iter().find_map(|steam_root| {
+                let vdf_path = steam_root.join("config").join("loginusers.vdf");
+                parse_loginusers_for_account_id(&vdf_path)
+            })
+        })
 }
 
 fn parse_loginusers_for_account_id(vdf_path: &PathBuf) -> Option<u32> {
-    let content = std::fs::read_to_string(vdf_path).ok()?;
+    let content = fs::read_to_string(vdf_path).ok()?;
+    parse_loginusers_content_for_account_id(&content)
+}
+
+fn parse_loginusers_content_for_account_id(content: &str) -> Option<u32> {
+    parse_loginusers_content_for_account_ids(content).into_iter().next()
+}
+
+fn parse_loginusers_content_for_account_ids(content: &str) -> Vec<u32> {
+    let mut ids = Vec::new();
     let mut current_steamid64: Option<String> = None;
 
     for line in content.lines() {
         let trimmed = line.trim();
 
-        // Match user root keys which are 17-digit SteamID64s
         if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() == 19 {
             let id = trimmed.trim_matches('"');
             if id.starts_with("7656") && id.len() == 17 {
@@ -275,14 +174,48 @@ fn parse_loginusers_for_account_id(vdf_path: &PathBuf) -> Option<u32> {
             }
         }
 
-        // VDF could be formatted with spaces or tabs
         if trimmed.contains("\"MostRecent\"") && trimmed.contains("\"1\"") {
-            if let Some(ref id_str) = current_steamid64 {
-                if let Ok(id_u64) = id_str.parse::<u64>() {
-                    // SteamID64 to Account ID is id_u64 - 76561197960265728
-                    let account_id = (id_u64 - 76561197960265728) as u32;
-                    return Some(account_id);
+            if let Some(account_id) = current_steamid64
+                .as_deref()
+                .and_then(steam_id64_to_account_id)
+            {
+                ids.insert(0, account_id);
+            }
+        } else if trimmed == "}" {
+            if let Some(account_id) = current_steamid64
+                .as_deref()
+                .and_then(steam_id64_to_account_id)
+            {
+                if !ids.contains(&account_id) {
+                    ids.push(account_id);
                 }
+            }
+            current_steamid64 = None;
+        }
+    }
+
+    ids
+}
+
+fn steam_id64_to_account_id(id: &str) -> Option<u32> {
+    let id_u64 = id.parse::<u64>().ok()?;
+    Some((id_u64 - 76561197960265728) as u32)
+}
+
+fn find_active_cloud_app_dir() -> Option<(u32, PathBuf)> {
+    for steam_root in read_steam_roots() {
+        let vdf_path = steam_root.join("config").join("loginusers.vdf");
+        let Ok(content) = fs::read_to_string(vdf_path) else {
+            continue;
+        };
+
+        for account_id in parse_loginusers_content_for_account_ids(&content) {
+            let app_dir = steam_root
+                .join("userdata")
+                .join(account_id.to_string())
+                .join(STEAM_APP_ID);
+            if app_dir.exists() {
+                return Some((account_id, app_dir));
             }
         }
     }
@@ -290,31 +223,66 @@ fn parse_loginusers_for_account_id(vdf_path: &PathBuf) -> Option<u32> {
     None
 }
 
-/// Find the exact userdata app directory for Slay the Spire 2 cloud saves.
-/// Path: `<Steam root>/userdata/<Account ID>/2868840`
 pub fn find_cloud_app_dir() -> Option<PathBuf> {
-    let steam_root = read_steam_root_from_registry()?;
-    let account_id = get_current_steam_account_id()?;
-
-    let app_dir = steam_root
-        .join("userdata")
-        .join(account_id.to_string())
-        .join(STEAM_APP_ID);
-
-    if app_dir.exists() {
-        Some(app_dir)
-    } else {
-        None
-    }
+    find_active_cloud_app_dir().map(|(_, app_dir)| app_dir)
 }
 
-/// Find the exact userdata path for Slay the Spire 2 cloud saves.
-/// Path: `<Steam root>/userdata/<Account ID>/2868840/remote`
 pub fn find_cloud_save_dir() -> Option<PathBuf> {
     let remote_dir = find_cloud_app_dir()?.join("remote");
     if remote_dir.exists() {
         Some(remote_dir)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LOGINUSERS_MOST_RECENT: &str = r#"
+"users"
+{
+    "76561198000000001"
+    {
+        "AccountName" "user1"
+        "MostRecent" "0"
+    }
+    "76561199516809413"
+    {
+        "AccountName" "user2"
+        "MostRecent" "1"
+    }
+}
+"#;
+
+    const LOGINUSERS_NO_MOST_RECENT: &str = r#"
+"users"
+{
+    "76561199516809413"
+    {
+        "AccountName" "user2"
+        "MostRecent" "0"
+    }
+}
+"#;
+
+    #[test]
+    fn prefers_most_recent_user() {
+        let ids = parse_loginusers_content_for_account_ids(LOGINUSERS_MOST_RECENT);
+        // MostRecent user (76561199516809413 - 76561197960265728 = 1556543685) should be first
+        assert_eq!(ids[0], 1556543685u32);
+    }
+
+    #[test]
+    fn falls_back_to_only_user_when_no_most_recent() {
+        let id = parse_loginusers_content_for_account_id(LOGINUSERS_NO_MOST_RECENT);
+        assert_eq!(id, Some(1556543685u32));
+    }
+
+    #[test]
+    fn steam_id64_conversion_is_correct() {
+        assert_eq!(steam_id64_to_account_id("76561199516809413"), Some(1556543685u32));
+        assert_eq!(steam_id64_to_account_id("76561197960265728"), Some(0u32));
     }
 }

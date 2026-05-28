@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm.cmd run dev",
-    "beforeBuildCommand": "npm.cmd run build"
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
@@ -40,14 +40,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "msi",
-    "icon": ["icons/icon.ico"],
-    "createUpdaterArtifacts": "v1Compatible",
-    "windows": {
-      "wix": {
-        "fragmentPaths": ["./windows/fragments/remove-desktop-shortcut.wxs"],
-        "componentRefs": ["DesktopShortcutCleanupAnchor"]
-      }
-    }
+    "targets": ["appimage", "deb"],
+    "icon": ["icons/icon.png"]
   }
 }
