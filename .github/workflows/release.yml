@@ -17,14 +17,14 @@ permissions:
 jobs:
   build-and-release:
     name: Build & Release (Windows)
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # ── Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ── Rust toolchain ────────────────────────────────────────────────────
       - name: Install Rust stable
@@ -37,9 +37,9 @@ jobs:
 
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       # ── Frontend dependencies ─────────────────────────────────────────────
