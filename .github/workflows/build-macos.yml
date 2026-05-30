@@ -1,0 +1,66 @@
+name: Build macOS Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip3 install pyobjc-core pyobjc-framework-Cocoa
+
+    - name: Make build script executable
+      run: chmod +x build_native.sh
+
+    - name: Build application
+      run: |
+        ./build_native.sh
+      env:
+        PYTHONPATH: /Library/Frameworks/Python.framework/Versions/3/bin
+
+    - name: Verify build artifacts
+      run: |
+        ls -la dist_native/
+        echo "App size: $(du -sh 'dist_native/Prompt Manager.app' | awk '{print $1}')"
+        echo "DMG size: $(du -sh 'dist_native/Prompt Manager.dmg' | awk '{print $1}')"
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist_native/Prompt Manager.dmg
+          dist_native/Prompt Manager.app
+        draft: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Prompt-Manager-macOS
+        path: dist_native/Prompt Manager.dmg
+        retention-days: 30
+
+    - name: Upload App artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Prompt-Manager-App
+        path: dist_native/Prompt Manager.app
+        retention-days: 30
