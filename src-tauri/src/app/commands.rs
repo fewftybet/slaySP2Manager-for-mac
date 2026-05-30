@@ -1495,10 +1495,23 @@ pub fn open_mod_folder(mod_id: String, state: State<'_, AppState>) -> Result<(),
 pub fn open_path_in_explorer(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
     if p.exists() {
-        std::process::Command::new("xdg-open")
-            .arg(p.parent().unwrap_or(p))
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        let path_to_open = p.parent().unwrap_or(p);
+        if cfg!(target_os = "macos") {
+            std::process::Command::new("open")
+                .arg(path_to_open)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else if cfg!(target_os = "windows") {
+            std::process::Command::new("explorer")
+                .arg(path_to_open)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("xdg-open")
+                .arg(path_to_open)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
     } else {
         return Err("Path does not exist".to_string());
     }
@@ -1507,10 +1520,24 @@ pub fn open_path_in_explorer(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn open_url_in_browser(url: String) -> Result<(), String> {
-    std::process::Command::new("xdg-open")
-        .arg(&url)
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    if cfg!(target_os = "macos") {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    } else if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .arg("/c")
+            .arg("start")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    } else {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

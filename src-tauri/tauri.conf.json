@@ -40,7 +40,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage", "deb"],
-    "icon": ["icons/icon.png"]
+    "targets": ["app", "dmg"],
+    "icon": ["icons/icon.png"],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
+    }
   }
 }
