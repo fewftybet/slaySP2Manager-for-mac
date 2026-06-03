@@ -13,7 +13,7 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/fewftybet/slaySP2Manager-for-mac/release.yml?style=flat-square&label=Build)](https://github.com/fewftybet/slaySP2Manager-for-mac/actions)
 [![License](https://img.shields.io/github/license/fewftybet/slaySP2Manager-for-mac?style=flat-square&color=95A5A6)](LICENSE)
 
-**macOS/Arch 版本** | [原始项目](https://github.com/wakaka6/SlaySP2Manger)
+**macOS 版本** | [原始项目](https://github.com/wakaka6/SlaySP2Manger)
 
 </div>
 
@@ -38,10 +38,6 @@
 - macOS 10.15 (Catalina) 或更高版本
 - Apple Silicon (M1/M2/M3) 或 Intel x86_64
 - 至少 4GB RAM
-
-### Arch Linux 用户
-
-详见 [Arch/AUR 安装说明](./packaging/arch/README)
 
 ---
 
@@ -121,7 +117,7 @@
 |------|---------|
 | Node.js | 20+ |
 | Rust | stable（通过 `rustup` 安装） |
-| macOS | 10.15+ 或 Arch Linux |
+| macOS | 10.15+ |
 
 ### 启动开发模式
 
@@ -139,9 +135,6 @@ npm run tauri:dev
 # macOS 构建
 npm run tauri build
 # 产物目录：src-tauri/target/release/bundle/dmg/
-
-# Arch Linux 构建
-# 详见 packaging/arch/PKGBUILD
 ```
 
 ---
@@ -186,7 +179,7 @@ npm run tauri build
 
 ### 本项目贡献者
 
-感谢所有为本 macOS/Arch 版本做出贡献的朋友们！
+感谢所有为本 macOS 版本做出贡献的朋友们！
 
 ---
 
@@ -200,7 +193,7 @@ MIT License — 详见 [LICENSE](LICENSE) 文件。
 
 <div align="center">
 
-**macOS & Arch Linux 版本**
+**macOS 版本**
 
 为《杀戮尖塔 2》社区打造
 
