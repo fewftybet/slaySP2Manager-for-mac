@@ -165,7 +165,7 @@ npm run tauri build
 | 贡献者 | 贡献数 |
 |--------|--------|
 | [![wakaka6](https://avatars.githubusercontent.com/u/48764488?v=4)](https://github.com/wakaka6) | 72 |
-| [![Copilot](https://avatars.githubusercontent.com/in/1143301?v=4)](https://github.com/copilot) | 6 |
+| [![konuhd](https://avatars.githubusercontent.com/konuhd?v=4)](https://github.com/konuhd) | 6 |
 
 </div>
 
