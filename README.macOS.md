@@ -1,6 +1,6 @@
 # SlaySP2Manager for macOS
 
-> Slay's Spell 2 Mod Manager - macOS 原生版本
+> 杀戮尖塔2 Mod管理器 macOS版 | Slay the Spire 2 Mod Manager for Mac
 
 [![Release](https://img.shields.io/github/v/release/fewftybet/slaySP2Manager-for-mac)](https://github.com/fewftybet/slaySP2Manager-for-mac/releases)
 [![License](https://img.shields.io/github/license/fewftybet/slaySP2Manager-for-mac)](LICENSE)
@@ -11,7 +11,7 @@
 
 从 [GitHub Releases](https://github.com/fewftybet/slaySP2Manager-for-mac/releases) 下载最新的 DMG 安装包：
 
-- **SlaySP2Manager_0.9.0.dmg** - macOS 安装包 (8.6 MB)
+- **SlaySP2Manager_0.9.1_aarch64.dmg** - macOS 安装包 (Apple Silicon)
 
 **安装步骤：**
 1. 下载 `.dmg` 文件
@@ -93,6 +93,14 @@ npm run tauri build
 `src-tauri/target/release/bundle/dmg/`
 
 ## 📝 更新日志 / Changelog
+
+### v0.9.1 (2026-06-03)
+
+**修复:**
+- 修复无法打开文件夹的 bug：添加 macOS 专属 Steam 库路径和游戏可执行文件检测
+- 修复图鉴无法使用的 macOS 兼容错误：修复资源路径、PCK 文件名、sts2.dll 搜索路径
+- 修复启动游戏的兼容性错误：修复游戏根目录和可执行文件路径解析
+- 修复窗口无法拖动：使用 macOS 原生 Overlay 标题栏
 
 ### v0.9.0 (2026-05-30)
 

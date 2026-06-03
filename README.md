@@ -3,9 +3,11 @@
 
 # SlaySP2Manager
 
-**Slay the Spire 2 桌面端 Mod 管理器 - macOS & Arch Linux 版本**
+**杀戮尖塔2 Mod管理器 macOS版 | Slay the Spire 2 Mod Manager for Mac**
 
 基于 Rust + Tauri + React 构建 — 快速、安全、全自动化管理。
+
+> 🔍 **搜索关键词**: 杀戮尖塔mod管理器 mac、杀戮尖塔2 mod管理器、slay the spire 2 mod manager mac、杀戮尖塔模组管理器、sts2 mod manager
 
 [![GitHub release](https://img.shields.io/github/v/release/fewftybet/slaySP2Manager-for-mac?style=flat-square&color=C9A84C)](https://github.com/fewftybet/slaySP2Manager-for-mac/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/fewftybet/slaySP2Manager-for-mac/release.yml?style=flat-square&label=Build)](https://github.com/fewftybet/slaySP2Manager-for-mac/actions)
@@ -21,10 +23,10 @@
 
 ### macOS 用户
 
-**最新版本**: v0.9.0 (2026-05-30)
+**最新版本**: v0.9.1 (2026-06-03)
 
 从 [GitHub Releases](https://github.com/fewftybet/slaySP2Manager-for-mac/releases) 下载：
-- **SlaySP2Manager_0.9.0.dmg** - macOS 安装包 (8.6 MB)
+- **SlaySP2Manager_0.9.1_aarch64.dmg** - macOS 安装包 (Apple Silicon)
 
 **安装步骤：**
 1. 下载 `.dmg` 文件
