@@ -59,7 +59,15 @@ fn run() -> AppResult<()> {
 
 fn build_snapshot(game_root: &Path) -> AppResult<SnapshotFile> {
     let release_info = read_release_info(game_root)?;
-    let pck = PckArchive::open(&game_root.join("SlayTheSpire2.pck"))?;
+    
+    // On macOS, the PCK file has a different name
+    #[cfg(target_os = "macos")]
+    let pck_path = game_root.join("Slay the Spire 2.pck");
+    
+    #[cfg(not(target_os = "macos"))]
+    let pck_path = game_root.join("SlayTheSpire2.pck");
+    
+    let pck = PckArchive::open(&pck_path)?;
     let parser = CardAssemblyParser::new(&find_sts2_assembly(game_root)?)?;
     let portrait_index = build_portrait_index(&pck)?;
 
@@ -129,13 +137,38 @@ fn write_snapshot_to_path(snapshot: &SnapshotFile, output_path: &Path) -> AppRes
 }
 
 fn find_sts2_assembly(game_root: &Path) -> AppResult<PathBuf> {
-    for directory_name in ["data_sts2_linux_x86_64", "data_sts2_linuxbsd_x86_64", "data_sts2_windows_x86_64"] {
-        let candidate = game_root.join(directory_name).join("sts2.dll");
+    // macOS paths
+    #[cfg(target_os = "macos")]
+    {
+        for directory_name in ["data_sts2_macos_arm64", "data_sts2_macos_x86_64"] {
+            let candidate = game_root.join(directory_name).join("sts2.dll");
+            if candidate.is_file() {
+                return Ok(candidate);
+            }
+        }
+    }
+
+    // Linux paths
+    #[cfg(target_os = "linux")]
+    {
+        for directory_name in ["data_sts2_linux_x86_64", "data_sts2_linuxbsd_x86_64"] {
+            let candidate = game_root.join(directory_name).join("sts2.dll");
+            if candidate.is_file() {
+                return Ok(candidate);
+            }
+        }
+    }
+
+    // Windows paths
+    #[cfg(target_os = "windows")]
+    {
+        let candidate = game_root.join("data_sts2_windows_x86_64").join("sts2.dll");
         if candidate.is_file() {
             return Ok(candidate);
         }
     }
 
+    // Fallback: scan for any data_sts2_* directory
     let entries = fs::read_dir(game_root).map_err(|error| {
         format!(
             "failed to scan game root for sts2.dll at {}: {error}",
@@ -145,7 +178,7 @@ fn find_sts2_assembly(game_root: &Path) -> AppResult<PathBuf> {
 
     for entry in entries.filter_map(Result::ok) {
         let path = entry.path();
-        if !path.is_dir() {
+        if !path.is_file() {
             continue;
         }
 
@@ -161,10 +194,7 @@ fn find_sts2_assembly(game_root: &Path) -> AppResult<PathBuf> {
         }
     }
 
-    Err(format!(
-        "failed to locate sts2.dll under game root {}",
-        game_root.display()
-    ))
+    Err("sts2.dll not found in game root".to_string())
 }
 
 #[derive(Debug, Clone)]

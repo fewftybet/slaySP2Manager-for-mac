@@ -56,12 +56,34 @@ fn steam_root_candidates() -> Vec<PathBuf> {
         return Vec::new();
     };
 
-    vec![
-        home.join(".steam/steam"),
-        home.join(".local/share/Steam"),
-        home.join(".var/app/com.valvesoftware.Steam/.steam/steam"),
-        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
-    ]
+    // macOS Steam paths
+    #[cfg(target_os = "macos")]
+    {
+        return vec![
+            home.join("Library/Application Support/Steam"),
+            home.join(".steam/steam"),
+        ];
+    }
+
+    // Linux Steam paths
+    #[cfg(target_os = "linux")]
+    {
+        return vec![
+            home.join(".steam/steam"),
+            home.join(".local/share/Steam"),
+            home.join(".var/app/com.valvesoftware.Steam/.steam/steam"),
+            home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+        ];
+    }
+
+    // Windows Steam paths
+    #[cfg(target_os = "windows")]
+    {
+        return vec![
+            home.join("AppData/Roaming/Steam"),
+            home.join("AppData/Local/Steam"),
+        ];
+    }
 }
 
 fn parse_library_folders(vdf_path: &PathBuf) -> Option<Vec<PathBuf>> {
@@ -127,14 +149,42 @@ fn common_candidates() -> Vec<(PathBuf, GameDetectSource)> {
         return result;
     };
 
-    for base in [
-        home.join(".steam/steam/steamapps/common"),
-        home.join(".local/share/Steam/steamapps/common"),
-        home.join(".var/app/com.valvesoftware.Steam/.steam/steam/steamapps/common"),
-        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common"),
-        home.join("Games"),
-    ] {
-        result.push((base.join(GAME_FOLDER_NAME), GameDetectSource::SteamDefault));
+    // macOS Steam common paths
+    #[cfg(target_os = "macos")]
+    {
+        result.push((
+            home.join("Library/Application Support/Steam/steamapps/common").join(GAME_FOLDER_NAME),
+            GameDetectSource::SteamDefault,
+        ));
+        result.push((
+            home.join(".steam/steam/steamapps/common").join(GAME_FOLDER_NAME),
+            GameDetectSource::SteamDefault,
+        ));
+    }
+
+    // Linux Steam common paths
+    #[cfg(target_os = "linux")]
+    {
+        for base in [
+            home.join(".steam/steam/steamapps/common"),
+            home.join(".local/share/Steam/steamapps/common"),
+            home.join(".var/app/com.valvesoftware.Steam/.steam/steam/steamapps/common"),
+            home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common"),
+            home.join("Games"),
+        ] {
+            result.push((base.join(GAME_FOLDER_NAME), GameDetectSource::SteamDefault));
+        }
+    }
+
+    // Windows Steam common paths
+    #[cfg(target_os = "windows")]
+    {
+        for base in [
+            home.join("AppData/Roaming/Steam/steamapps/common"),
+            home.join("AppData/Local/Steam/steamapps/common"),
+        ] {
+            result.push((base.join(GAME_FOLDER_NAME), GameDetectSource::SteamDefault));
+        }
     }
 
     result

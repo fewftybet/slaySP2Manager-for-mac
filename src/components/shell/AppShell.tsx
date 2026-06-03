@@ -10,13 +10,13 @@ import {
 } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useTransition, useCallback, useRef } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n } from "../../i18n/I18nProvider";
 import { getAppBootstrap, previewPresetBundle, type AppBootstrap } from "../../lib/desktop";
 import { SidebarNav } from "./SidebarNav";
 import { WelcomeGuide } from "./WelcomeGuide";
 import { UpdateChecker } from "./UpdateChecker";
 import { useDropZone } from "../../contexts/DropZoneContext";
-import { WindowControls } from "./WindowControls";
 
 export type ShellNavItem = {
   label: string;
@@ -115,6 +115,13 @@ export function AppShell() {
     }
   }, [pendingDropPaths, location.pathname, navigate, setPendingDropPaths]);
 
+  const handleDragRegionMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, select, textarea")) return;
+    getCurrentWindow().startDragging();
+  }, []);
+
   const navItems: ShellNavItem[] = [
     { label: t("nav.library"), path: "/", icon: Library, badge: appState ? String(appState.installedCount + appState.disabledCount) : "0" },
     { label: locale === "en-US" ? "Compendium" : "卡牌图鉴", path: "/compendium", icon: BookImage },
@@ -148,10 +155,9 @@ export function AppShell() {
         }}
       />
       <main className="app-shell__content">
-        <div className="app-shell__drag-bar" data-tauri-drag-region />
+        <div className="title-bar" data-tauri-drag-region onMouseDown={handleDragRegionMouseDown} />
         <Outlet />
       </main>
-      <WindowControls />
 
       {isDragging && (
         <div className="drop-overlay">

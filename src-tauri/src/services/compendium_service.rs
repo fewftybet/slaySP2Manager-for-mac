@@ -521,7 +521,18 @@ impl CompendiumService {
             .detect_install()
             .map_err(|error| error.to_string())?;
 
-        let release_path = Path::new(&install.root_dir).join("release_info.json");
+        // On macOS, resources are in Contents/Resources, not in root_dir
+        let resources_dir = if cfg!(target_os = "macos") {
+            let exe_path = Path::new(&install.exe_path);
+            exe_path.parent() // Contents/MacOS
+                .and_then(|p| p.parent()) // Contents
+                .map(|p| p.join("Resources"))
+                .unwrap_or_else(|| Path::new(&install.root_dir).to_path_buf())
+        } else {
+            Path::new(&install.root_dir).to_path_buf()
+        };
+
+        let release_path = resources_dir.join("release_info.json");
         let release: ReleaseInfo = serde_json::from_str(
             &fs::read_to_string(&release_path)
                 .map_err(|error| format!("failed to read {}: {error}", release_path.display()))?,
@@ -538,7 +549,7 @@ impl CompendiumService {
             .join("snapshot")
             .join("card-metadata.json");
         let snapshot = ensure_snapshot(
-            Path::new(&install.root_dir),
+            &resources_dir,
             &snapshot_cache_file,
             &release,
             force_refresh,
@@ -554,7 +565,7 @@ impl CompendiumService {
             "zhs"
         };
 
-        let pck_path = Path::new(&install.root_dir).join("SlayTheSpire2.pck");
+        let pck_path = resources_dir.join("Slay the Spire 2.pck");
         let archive = PckArchive::open(&pck_path)?;
         let cards_text: HashMap<String, String> = serde_json::from_slice(
             &archive.read_bytes(&format!("localization/{}/cards.json", locale_dir))?,

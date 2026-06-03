@@ -1427,11 +1427,67 @@ fn sanitize_profile_filename(name: &str) -> String {
 }
 
 #[tauri::command]
-pub fn launch_game() -> Result<(), String> {
-    std::process::Command::new("xdg-open")
-        .arg("steam://rungameid/2868840")
-        .spawn()
-        .map_err(|e| e.to_string())?;
+pub fn launch_game(state: State<'_, AppState>) -> Result<(), String> {
+    let settings = state
+        .settings
+        .read()
+        .map_err(|_| "failed to read app settings".to_string())?
+        .clone();
+
+    let game_service = crate::services::game_service::GameService::new(settings);
+    
+    // Try to detect game installation
+    if let Ok(game_install) = game_service.detect_install() {
+        let exe_path = std::path::PathBuf::from(&game_install.exe_path);
+        
+        if cfg!(target_os = "macos") {
+            // On macOS, we need to open the .app bundle, not the executable
+            // If exe_path is inside .app/Contents/MacOS, extract the .app path
+            let app_path = if exe_path.to_string_lossy().contains(".app/Contents/MacOS") {
+                // Navigate up from Contents/MacOS to get the .app bundle
+                exe_path.parent() // Go to Contents/MacOS
+                    .and_then(|p| p.parent()) // Go to Contents
+                    .and_then(|p| p.parent()) // Go to .app
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(exe_path.clone())
+            } else {
+                exe_path.clone()
+            };
+            
+            std::process::Command::new("open")
+                .arg(&app_path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch game: {}", e))?;
+        } else if cfg!(target_os = "windows") {
+            std::process::Command::new(&exe_path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch game: {}", e))?;
+        } else {
+            std::process::Command::new(&exe_path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch game: {}", e))?;
+        }
+    } else {
+        // Fallback to steam:// protocol if game path not detected
+        if cfg!(target_os = "macos") {
+            std::process::Command::new("open")
+                .arg("steam://rungameid/2868840")
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else if cfg!(target_os = "windows") {
+            std::process::Command::new("cmd")
+                .arg("/c")
+                .arg("start")
+                .arg("steam://rungameid/2868840")
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("xdg-open")
+                .arg("steam://rungameid/2868840")
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
 
     Ok(())
 }
@@ -1449,10 +1505,22 @@ pub fn open_mods_directory(state: State<'_, AppState>) -> Result<(), String> {
 
     let path = std::path::Path::new(&detected_game.mods_dir);
     if path.exists() {
-        std::process::Command::new("xdg-open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        if cfg!(target_os = "macos") {
+            std::process::Command::new("open")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else if cfg!(target_os = "windows") {
+            std::process::Command::new("explorer")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("xdg-open")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
     } else {
         return Err("Mods directory does not exist".to_string());
     }
@@ -1480,10 +1548,22 @@ pub fn open_mod_folder(mod_id: String, state: State<'_, AppState>) -> Result<(),
 
     let path = std::path::Path::new(&found.install_dir);
     if path.exists() {
-        std::process::Command::new("xdg-open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        if cfg!(target_os = "macos") {
+            std::process::Command::new("open")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else if cfg!(target_os = "windows") {
+            std::process::Command::new("explorer")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("xdg-open")
+                .arg(path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
     } else {
         return Err("Mod directory does not exist".to_string());
     }

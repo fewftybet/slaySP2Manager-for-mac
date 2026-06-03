@@ -13,7 +13,8 @@ import appIcon from "../../assets/app-icon.png";
 import { useDownloads } from "../../contexts/DownloadContext";
 import { useUpdate } from "../../contexts/UpdateContext";
 import type { ShellNavItem, ShellNavigateOptions } from "./AppShell";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type SidebarNavProps = {
   items: ShellNavItem[];
@@ -247,7 +248,16 @@ export function SidebarNav(props: SidebarNavProps) {
         </button>
       ) : null}
 
-      <div className="sidebar-nav__brand" data-tauri-drag-region>
+      <div
+        className="sidebar-nav__brand"
+        data-tauri-drag-region
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          const target = e.target as HTMLElement;
+          if (target.closest("button, a, input, select, textarea")) return;
+          getCurrentWindow().startDragging();
+        }}
+      >
         <span className="sidebar-nav__brand-mark">
           <img src={appIcon} alt="SlaySP2Manager" width={22} height={22} style={{ borderRadius: 4 }} />
         </span>
